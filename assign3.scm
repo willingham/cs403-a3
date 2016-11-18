@@ -15,7 +15,7 @@
   	(define (let? items)
     	(eq? (car items) 'let)) 
 	(define (iter items)
-        (inspect items)
+        ;(inspect items)
 		(cond
             ((null? items) 'DONE)
             ((atom? (car items))
@@ -28,11 +28,12 @@
             ((list? (car items))
                 (if (define? (car items))
                     (begin
-                        (set! nonLocal (append nonLocal (list (car (car items)))))
+                        ;(set! nonLocal (append nonLocal (list (car (car items)))))
                         (if (atom? (car (cdr (car items))))
                             (set! local (append local (car (cdr (car items)))))
                             (set! local (append local (car (car (cdr (car items))))))
                             )
+                        ;(iter (cdr items))
                         )
                     (if (not (or (lambda? (car items)) (let? (car items))))
                         (iter (car items))
@@ -53,8 +54,14 @@
     (define (foo a) 
         (+ a b)
         )
+    (define (bar)
+        (define a 2)
+        (define b 3)
+        (+ a b c)
+        )
     (nonlocals square)
     (nonlocals foo)
+    (nonlocals bar)
     )
 
 (run1)
@@ -73,3 +80,4 @@
     (if !equal)
     )
 
+(println "assignment 3 loaded!")
