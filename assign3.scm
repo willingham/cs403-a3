@@ -3,7 +3,6 @@
 
 (define (nonlocals func)
     (define nonLocal (list))
-  	(define denv (get '__context func))
   	(define body (cdr (get 'code func)))
   	(define local (get 'parameters func))
   	(define (function? items)
@@ -15,17 +14,21 @@
     	(eq? (car items) 'lambda))
   	(define (let? items)
     	(eq? (car items) 'let)) 
-	(define (iter items) 
+	(define (iter items)
+        (inspect items)
 		(cond
             ((null? items) 'DONE)
             ((atom? (car items))
                 (if (not (member? (car items) local))
-                    (set! nonLocal (append nonLocal (list (car items))))
+                    (begin 
+                        (set! nonLocal (append nonLocal (list (car items))))
+                        (iter (cdr items)))
                     (iter (cdr items))
                     ))
             ((list? (car items))
                 (if (define? (car items))
                     (begin
+                        (set! nonLocal (append nonLocal (list (car (car items)))))
                         (if (atom? (car (cdr (car items))))
                             (set! local (append local (car (cdr (car items)))))
                             (set! local (append local (car (car (cdr (car items))))))
@@ -40,20 +43,15 @@
             )
         )
     (iter body)
-    (inspect local)
+    (inspect nonLocal)
     )
-
-
-
-			
-
 
 (define (run1)
     (define (square x)
         (* x x)
         )
-    (define (foo a b c d e) 
-        (+ (* a b c d) e)
+    (define (foo a) 
+        (+ a b)
         )
     (nonlocals square)
     (nonlocals foo)
