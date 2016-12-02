@@ -63,17 +63,170 @@
     (inspect (nonlocals bar))
     )
 
-(run1)
+;(run1)
+
+; 4
+
+(define (constant value connector)
+  (define (me request)
+    (error "Unknown request - CONSTANT" request))
+  (connect connector me)
+  (set-value! connector value me)
+  me)
+
+(define (probe name connector)
+  (define (print-probe value)
+    (newline)
+    (display "Probe: ")
+    (display name)
+    (display " = ")
+    (display value))
+  (define (process-new-value)
+    (print-probe (get-value connector)))
+  (define (process-forget-value)
+    (print-probe "?"))
+  (define (me request)
+    (cond ((eq? request 'I-have-a-value)
+           (process-new-value))
+          ((eq? request 'I-lost-my-value)
+           (process-forget-value))
+          (else
+           (error "Unknown request - PROBE" request))))
+  (connect connector me)
+  me)
+
+(define (make-connector)
+  (let ((value #f) (informant #f) (constraints '()))
+    (define (set-my-value newval setter)
+      (cond ((not (has-value? me))
+             (set! value newval)
+             (set! informant setter)
+             (for-each-except setter
+                              inform-about-value
+                              constraints))
+            ((not (= value newval))
+             (error "Contradiction" (list value newval)))
+            (else 'ignored)))
+    (define (forget-my-value retractor)
+      (if (eq? retractor informant)
+          (begin (set! informant #f)
+                 (for-each-except retractor
+                                  inform-about-no-value
+                                  constraints))
+          'ignored))
+    (define (connect new-constraint)
+      (if (not (memq new-constraint constraints))
+          (set! constraints 
+                (cons new-constraint constraints)))
+      (if (has-value? me)
+          (inform-about-value new-constraint))
+      'done)
+    (define (me request)
+      (cond ((eq? request 'has-value?)
+             (if informant #t #f))
+            ((eq? request 'value) value)
+            ((eq? request 'set-value!) set-my-value)
+            ((eq? request 'forget) forget-my-value)
+            ((eq? request 'connect) connect)
+            (else (error "Unknown operation - CONNECTOR"
+                         request))))
+    me))
+
+(define (multiplier m1 m2 product)
+  (define (process-new-value)
+    (cond ((or (and (has-value? m1) (= (get-value m1) 0))
+               (and (has-value? m2) (= (get-value m2) 0)))
+           (set-value! product 0 me))
+          ((and (has-value? m1) (has-value? m2))
+           (set-value! product
+                       (* (get-value m1) (get-value m2))
+                       me))
+          ((and (has-value? product) (has-value? m1))
+           (set-value! m2
+                       (/ (get-value product) (get-value m1))
+                       me))
+          ((and (has-value? product) (has-value? m2))
+           (set-value! m1
+                       (/ (get-value product) (get-value m2))
+                       me))))
+  (define (process-forget-value)
+    (forget-value! product me)
+    (forget-value! m1 me)
+    (forget-value! m2 me)
+    (process-new-value))
+  (define (me request)
+    (cond ((eq? request 'I-have-a-value)
+           (process-new-value))
+          ((eq? request 'I-lost-my-value)
+           (process-forget-value))
+          (else
+           (error "Unknown request - MULTIPLIER" request))))
+  (connect m1 me)
+  (connect m2 me)
+  (connect product me)
+  me)
+
+(define (divider m1 m2 product)
+  (define (process-new-value)
+    (cond ((or (and (has-value? m1) (= (get-value m1) 0))
+               (and (has-value? m2) (= (get-value m2) 0)))
+           (set-value! product 0 me))
+          ((and (has-value? m1) (has-value? m2))
+           (set-value! product
+                       (/ (get-value m1) (get-value m2))
+                       me))
+          ((and (has-value? product) (has-value? m1))
+           (set-value! m2
+                       (/ (get-value m1)) (get-value product)
+                       me))
+          ((and (has-value? product) (has-value? m2))
+           (set-value! m1
+                       (* (get-value product) (get-value m2))
+                       me))))
+  (define (process-forget-value)
+    (forget-value! product me)
+    (forget-value! m1 me)
+    (forget-value! m2 me)
+    (process-new-value))
+  (define (me request)
+    (cond ((eq? request 'I-have-a-value)
+           (process-new-value))
+          ((eq? request 'I-lost-my-value)
+           (process-forget-value))
+          (else
+           (error "Unknown request - MULTIPLIER" request))))
+  (connect m1 me)
+  (connect m2 me)
+  (connect product me)
+  me)
+
+(define (has-value? connector)
+  (connector 'has-value?))
+
+(define (get-value connector)
+  (connector 'value))
+
+(define (set-value! connector new-value informant)
+  ((connector 'set-value!) new-value informant))
+
+(define (forget-value! connector retractor)
+  ((connector 'forget) retractor))
 
 
+(define (gravity f m1 m2 r)
+    (let ((n (make-connector))
+          (d (make-connector))
+          (frac (make-connector))
+          (rhs (make-connector)))
+      (multiplier m1 m2 n)
+	  (multiplier r r d)
+      (divider n d frac)
+      (multiplier g frac f)
+      (constant 0.00667300 g)
+      'ok))
 
-
-(define (replace sym val) 
-    (cond
-        ((eq? (car code) sim)
-            (set-car! code val))
-        )
-    )
+(define (run4)
+	)
 
 ; 5
 
@@ -117,7 +270,7 @@
     (tjoin z)
     (println "All threads finished")
     )
-(run5)
+;(run5)
 
 ; 6
 
@@ -150,26 +303,34 @@
     (inspect (sdisplay bgs 4)) 
     )
 
-(run6)
+;(run6)
 
 
 ; 8
 
+(define (x-powers x e) (scons (^ x e) (x-powers x (+ e 2))))
+
+(define alt-ones (cons-stream 1 (cons-stream -1 alt-ones)))
+
 (define (denoms)
-    (define (helper x c) (scons x (helper (* 1.0 x (* c 1) (+ c 2)) (+ c 2))))
+    (define (helper x c) 
+        (scons x 
+               (helper (* 1.0 x (* c 1) (+ c 2)) (+ c 2))
+               )
+        )
     (scons 1 (helper 2 2))
     )
 
 (define (numers x)
-    (sop * x alt-ones (x-powers x 0))
+    (mul-streams (alt-ones) (x-powers x 0))
     )
 
 (define (mystery x)
-    (sop / (numers x (denoms)))
+    (div-streams (numers x) (denoms))
     )
 
 (define (run8)
-    (inspect (mystery 3))
+    (sdisplay (mystery 5) 5)
     )
 
 

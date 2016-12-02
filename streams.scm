@@ -19,12 +19,22 @@
 (define scar stream-car)
 (define scdr stream-cdr)
 (define scons cons-stream)
+
+(define (stream-map2 proc . argstreams)
+  (if (stream-null? (car argstreams))
+      the-empty-stream
+      (scons
+       (apply proc (map stream-car argstreams))
+       (apply stream-map2
+              (cons proc (map stream-cdr argstreams))))))
+
+(define (mul-streams a b) (stream-map2 * a b))
     
 (define (sdisplay s n)
     (cond
         ((= n 0) (print "...\n"))
         (else
-            (print (stream-car s) " ")
+            (print (stream-car s) ",")
             (sdisplay (stream-cdr s) (- n 1))
             )
         )
