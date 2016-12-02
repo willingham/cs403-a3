@@ -67,6 +67,20 @@
 
 ; 4
 
+(define (for-each-except exception procedure list)
+    (define (loop items)
+          (cond ((null? items) 'done)
+                          ((eq? (car items) exception) (loop (cdr items)))
+                                    (else (procedure (car items))
+                                                          (loop (cdr items)))))
+      (loop list))
+
+(define (inform-about-value constraint)
+    (constraint 'I-have-a-value))
+
+(define (inform-about-no-value constraint)
+    (constraint 'I-lost-my-value))
+
 (define (constant value connector)
   (define (me request)
     (error "Unknown request - CONSTANT" request))
@@ -115,7 +129,7 @@
                                   constraints))
           'ignored))
     (define (connect new-constraint)
-      (if (not (memq new-constraint constraints))
+      (if (not (member? new-constraint constraints))
           (set! constraints 
                 (cons new-constraint constraints)))
       (if (has-value? me)
@@ -123,7 +137,7 @@
       'done)
     (define (me request)
       (cond ((eq? request 'has-value?)
-             (if informant #t #f))
+             (if (and informant #t) #t #f))
             ((eq? request 'value) value)
             ((eq? request 'set-value!) set-my-value)
             ((eq? request 'forget) forget-my-value)
@@ -131,6 +145,8 @@
             (else (error "Unknown operation - CONNECTOR"
                          request))))
     me))
+
+
 
 (define (multiplier m1 m2 product)
   (define (process-new-value)
@@ -212,17 +228,21 @@
 (define (forget-value! connector retractor)
   ((connector 'forget) retractor))
 
+(define (connect connector new-constraint)
+    ((connector 'connect) new-constraint))
+
 
 (define (gravity f m1 m2 r)
     (let ((n (make-connector))
           (d (make-connector))
           (frac (make-connector))
+          (g (make-connector))
           (rhs (make-connector)))
       (multiplier m1 m2 n)
 	  (multiplier r r d)
       (divider n d frac)
-      (multiplier g frac f)
       (constant 0.00667300 g)
+      (multiplier g frac f)
       'ok))
 
 (define (run4)
