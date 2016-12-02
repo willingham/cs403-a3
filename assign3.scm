@@ -74,10 +74,41 @@
             (set-car! code val))
         )
     )
+; 6
+
 
 (define (big-gulp)
-    (if !equal)
+    (define (merge s1 s2)
+        (cond 
+            ((stream-null? s1) s2)
+            ((stream-null? s2) s1)
+            (else
+                (let ((s1car (stream-car s1))
+                    (s2car (stream-car s2)))
+                    (cond 
+                        ((< s1car s2car) (cons-stream s1car (merge (stream-cdr s1) s2)))
+                        ((> s1car s2car)
+                            (cons-stream s2car (merge s1 (stream-cdr s2))))
+                        (else
+                            (cons-stream s1car
+                                (merge (stream-cdr s1)
+                                (stream-cdr s2)))))))))
+    (define s (scons 1 (merge 
+                            (sscale s 7) (sscale s 11))))
+    (define s (scdr s)) ;get rid of 1
+    s
     )
+
+(define bgs (big-gulp))
+
+(define (run6)
+    (inspect (sdisplay bgs 4)) 
+    )
+
+(run6)
+
+
+; 8
 
 (define (denoms)
     (define (helper x c) (scons x (helper (* 1.0 x (* c 1) (+ c 2)) (+ c 2))))
@@ -128,5 +159,5 @@
 (define (run9)
     (sdisplay (ramanujan) 6)
     )
-(run9)
+
 (println "assignment 3 loaded!")
