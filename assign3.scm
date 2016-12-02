@@ -43,7 +43,7 @@
             )
         )
     (iter body)
-    nonLocal
+    (append (list 'begin) nonLocal)
     )
 
 (define (run1)
@@ -74,6 +74,51 @@
             (set-car! code val))
         )
     )
+
+; 5
+
+(define (barrier)
+    (define y 0)
+    (define (set x)
+        (set! y x)
+        )
+    (define (install)
+        (lock)
+        (set! y (- y 1))
+        (unlock)
+        )
+    (define (remove)
+        (if (= y 0)
+            #t
+            (begin
+                (sleep 1)
+                (remove)
+                )
+            )
+        )
+    this
+    )
+
+(define (run5)
+    (define b (barrier))
+    (define (helper)
+        ((b'install))
+        ((b'remove))
+        )
+    ((b'set) 3)
+    (println "Starting thread 1")
+    (define x (thread (begin (helper))))
+    (println "Starting thread 2")
+    (define y (thread (begin (helper))))
+    (println "Starting thread 3")
+    (define z (thread (begin (helper))))
+    (tjoin x)
+    (tjoin y)
+    (tjoin z)
+    (println "All threads finished")
+    )
+(run5)
+
 ; 6
 
 
