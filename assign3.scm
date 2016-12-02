@@ -1,5 +1,5 @@
+(include "streams.scm")
 (define (author) (println "AUTHOR: Thomas Willingham twillingham@crimson.ua.edu"))
-
 
 (define (nonlocals func)
     (define nonLocal (list))
@@ -13,8 +13,7 @@
   	(define (lambda? items)
     	(eq? (car items) 'lambda))
   	(define (let? items)
-    	(eq? (car items) 'let)) 
-	(define (iter items)
+    	(eq? (car items) 'let)) (define (iter items)
         ;(inspect items)
 		(cond
             ((null? items) 'DONE)
@@ -44,7 +43,7 @@
             )
         )
     (iter body)
-    (inspect nonLocal)
+    nonLocal
     )
 
 (define (run1)
@@ -59,9 +58,9 @@
         (define b 3)
         (+ a b c)
         )
-    (nonlocals square)
-    (nonlocals foo)
-    (nonlocals bar)
+    (inspect (nonlocals square))
+    (inspect (nonlocals foo))
+    (inspect (nonlocals bar))
     )
 
 (run1)
@@ -80,4 +79,54 @@
     (if !equal)
     )
 
+(define (denoms)
+    (define (helper x c) (scons x (helper (* 1.0 x (* c 1) (+ c 2)) (+ c 2))))
+    (scons 1 (helper 2 2))
+    )
+
+(define (numers x)
+    (sop * x alt-ones (x-powers x 0))
+    )
+
+(define (mystery x)
+    (sop / (numers x (denoms)))
+    )
+
+(define (run8)
+    (inspect (mystery 3))
+    )
+
+
+; 9
+
+(define (ramanujan)
+    (define (pairs s t)
+        (scons
+            (list (scar s) (scar t))
+            (sshuffle (smap (lambda (x) (list (scar s) x)) (scdr t)) (pairs (scdr s) (scdr t)))
+            )
+        )
+    (define (sshuffle s t)
+        (define a (+ (^ (car (scar s)) 3) (^ (cadr (scar s)) 3)))
+        (define b (+ (^ (car (scar t)) 3) (^ (cadr (scar t)) 3)))
+        (if (< a b)
+            (scons (scar s) (sshuffle (scdr s) t))
+            (scons (scar t) (sshuffle s (scdr t)))
+            )
+        )
+    (define (duplicates s lastDup)
+        (if (and (= (scar s) (scar (scdr s))) (not (= (scar s) lastDup)))
+            (scons (scar s) (duplicates (scdr s) (scar s)))
+            (duplicates (scdr s) lastDup)
+            )
+        )
+    (define sortedPairs (pairs (ints-from 0) (ints-from 0)))
+    (define sortedVals (smap (lambda (x) (+ (^ (car x) 3) (^ (cadr x) 3))) sortedPairs))
+    (duplicates sortedVals 0)
+    )
+
+(define (run9)
+    (sdisplay (ramanujan) 6)
+    )
+(run9)
 (println "assignment 3 loaded!")
