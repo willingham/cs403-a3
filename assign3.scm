@@ -14,7 +14,6 @@
     	(eq? (car items) 'lambda))
   	(define (let? items)
     	(eq? (car items) 'let)) (define (iter items)
-        (inspect items)
 		(cond
             ((null? items) 'DONE)
             ((atom? (car items))
@@ -200,7 +199,7 @@
                        me))
           ((and (has-value? product) (has-value? m1))
            (set-value! m2
-                       (/ (get-value m1)) (get-value product)
+                       (/ (get-value m1) (get-value product))
                        me))
           ((and (has-value? product) (has-value? m2))
            (set-value! m1
@@ -220,6 +219,30 @@
            (error "Unknown request - MULTIPLIER" request))))
   (connect m1 me)
   (connect m2 me)
+  (connect product me)
+  me)
+
+(define (squareCon m1 product)
+  (define (process-new-value)
+    (cond 
+        ((and (has-value? m1) (= (get-value m1) 0))
+            (set-value! product 0 me))
+        ((has-value? m1)
+            (set-value! product (* (get-value m1) (get-value m1)) me))
+        ((has-value? product)
+            (set-value! m1 (sqrt (get-value product)) me))))
+  (define (process-forget-value)
+    (forget-value! product me)
+    (forget-value! m1 me)
+    (process-new-value))
+  (define (me request)
+    (cond ((eq? request 'I-have-a-value)
+           (process-new-value))
+          ((eq? request 'I-lost-my-value)
+           (process-forget-value))
+          (else
+           (error "Unknown request - MULTIPLIER" request))))
+  (connect m1 me)
   (connect product me)
   me)
 
@@ -246,14 +269,24 @@
           (g (make-connector))
           (rhs (make-connector)))
       (multiplier m1 m2 n)
-	  (multiplier r r d)
+	  (squareCon r d)
       (divider n d frac)
-      (constant 0.00667300 g)
       (multiplier g frac f)
+      (constant 0.00667300 g)
       'ok))
 
 (define (run4)
+    (define f (make-connector))
+    (define m1 (make-connector))
+    (define m2 (make-connector))
+    (define r (make-connector))
+    (gravity f m1 m2 r)
+    (set-value! m1 1 this) 
+    (set-value! m2 4 this)
+    (set-value! f 0.00667300 this)
+    (inspect (get-value r))
 	)
+;(run4)
 
 ; 5
 
@@ -339,25 +372,69 @@
 
 (define alt-ones (cons-stream 1 (cons-stream -1 alt-ones)))
 
+(define (sop operator s1 s2)
+	(scons (operator (scar s1) (scar s2)) (sop operator (scdr s1) (scdr s2)))
+	)
+
 (define (denoms)
-    (define (helper x c) 
-        (scons x 
-               (helper (* 1.0 x (* c 1) (+ c 2)) (+ c 2))
-               )
-        )
-    (scons 1 (helper 2 2))
-    )
+	(define (helper x c)
+		(scons x (helper (* 1.0 x (+ c 1) (+ c 2)) (+ c 2))))
+	(scons 1 (helper 2 2))
+)
 
 (define (numers x)
-    (mul-streams (alt-ones) (x-powers x 0))
+    (sop * alt-ones (x-powers x 0))
     )
 
 (define (mystery x)
-    (div-streams (numers x) (denoms))
+    (sop / (numers x) (denoms))
     )
 
+(define (ps-mystery x)
+    (partial-sums (mystery x))
+    )
+
+(define (partial-sums s)
+	(cons-stream (car s) 
+				 (add-streams (partial-sums s)
+							  (stream-cdr s)))) 
+
+(define (square x)
+	(* x x)
+	)
+
+(define (euler-transform s)
+  (let ((s0 (stream-ref s 0))           ; Sn-1
+        (s1 (stream-ref s 1))           ; Sn
+        (s2 (stream-ref s 2)))          ; Sn+1
+		(define x (+ s0 (* -2 s1) s2))
+		(if (= x 0)
+    		(cons-stream s1 (euler-transform (stream-cdr s)))
+    		(cons-stream (- s2 (/ (square (- s2 s1)) x))
+                 		 (euler-transform (stream-cdr s)))
+			)
+		)
+	)
+
+(define (make-tableau transform s)
+  (cons-stream s
+               (make-tableau transform
+                             (transform s))))
+
+(define (accelerated-sequence transform s)
+  (stream-map stream-car
+              (make-tableau transform s)))
+
+(define (acc-mystery x)
+	(euler-transform (ps-mystery x))
+	)
+
+(define (super-mystery x)
+	(accelerated-sequence euler-transform (ps-mystery x))
+	)
+
 (define (run8)
-    (sdisplay (mystery 5) 5)
+	(sdisplay (mystery 2) 6)
     )
 
 
@@ -390,7 +467,7 @@
     )
 
 (define (run9)
-    (sdisplay (ramanujan) 6)
+    (inspect (sdisplay (ramanujan) 4))
     )
 
 (println "assignment 3 loaded!")
