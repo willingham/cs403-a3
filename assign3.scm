@@ -14,7 +14,7 @@
     	(eq? (car items) 'lambda))
   	(define (let? items)
     	(eq? (car items) 'let)) (define (iter items)
-        ;(inspect items)
+        (inspect items)
 		(cond
             ((null? items) 'DONE)
             ((atom? (car items))
@@ -27,18 +27,20 @@
             ((list? (car items))
                 (if (define? (car items))
                     (begin
-                        ;(set! nonLocal (append nonLocal (list (car (car items)))))
+                        (if (not (member? 'define nonLocal))
+                            (set! nonLocal (append nonLocal (list (car (car items))))))
+                        ;(set-car! (car items) (car (car items)))
                         (if (atom? (car (cdr (car items))))
-                            (set! local (append local (car (cdr (car items)))))
-                            (set! local (append local (car (car (cdr (car items))))))
+                            (set! local (append local (list (car (cdr (car items))))))
+                            (set! local (append local (list (car (car (cdr (car items)))))))
                             )
                         ;(iter (cdr items))
                         )
                     (if (not (or (lambda? (car items)) (let? (car items))))
                         (iter (car items))
-                        (iter (cdr items))
                         )
                     )
+                    (iter (cdr items))
                 )
             )
         )
@@ -64,6 +66,11 @@
     )
 
 ;(run1)
+
+; 3
+
+
+
 
 ; 4
 
@@ -137,7 +144,7 @@
       'done)
     (define (me request)
       (cond ((eq? request 'has-value?)
-             (if (and informant #t) #t #f))
+             (if (not (equal? informant #f)) #t #f))
             ((eq? request 'value) value)
             ((eq? request 'set-value!) set-my-value)
             ((eq? request 'forget) forget-my-value)
